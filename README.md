@@ -30,9 +30,6 @@ It analyzes various academic and behavioral factors to determine outcomes.
   - Previous Marks
   - Assignment Score
   - Internal Marks
-  - Parental Education
-  - Internet Access
-  - Extra Classes
 
 Target:
 - Final_Result (0 = Fail, 1 = Pass)
