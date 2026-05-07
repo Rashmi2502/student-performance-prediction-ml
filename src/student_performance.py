@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 import os
 
 # -----------------------------
@@ -31,9 +31,9 @@ if "Student_ID" in df.columns:
 # -----------------------------
 # Encode categorical variables
 # -----------------------------
-for col in df.select_dtypes(include=['object', 'string']).columns:
-    le = LabelEncoder()
-    df[col] = le.fit_transform(df[col])
+categorical_cols = df.select_dtypes(include=['object', 'string']).columns
+for col in categorical_cols:
+    df[col] = LabelEncoder().fit_transform(df[col])
 
 # -----------------------------
 # Features & Target
@@ -45,8 +45,15 @@ y = df["Final_Result"]
 # Train-Test Split
 # -----------------------------
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+    X, y, test_size=0.2, random_state=42, stratify=y
 )
+
+# -----------------------------
+# Scaling (for Logistic Regression)
+# -----------------------------
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
 
 # =========================================================
 # MODEL 1: Decision Tree
@@ -57,31 +64,31 @@ dt_model.fit(X_train, y_train)
 y_pred_dt = dt_model.predict(X_test)
 dt_accuracy = accuracy_score(y_test, y_pred_dt)
 
-print("\nDecision Tree Accuracy:", dt_accuracy)
+print("\nDecision Tree Accuracy:", round(dt_accuracy, 3))
 
 # =========================================================
 # MODEL 2: Logistic Regression
 # =========================================================
 lr_model = LogisticRegression(max_iter=1000)
-lr_model.fit(X_train, y_train)
+lr_model.fit(X_train_scaled, y_train)
 
-y_pred_lr = lr_model.predict(X_test)
+y_pred_lr = lr_model.predict(X_test_scaled)
 lr_accuracy = accuracy_score(y_test, y_pred_lr)
 
-print("Logistic Regression Accuracy:", lr_accuracy)
+print("Logistic Regression Accuracy:", round(lr_accuracy, 3))
 
 # -----------------------------
 # Save accuracy comparison
 # -----------------------------
 with open("outputs/model_accuracy.txt", "w") as f:
-    f.write(f"Decision Tree Accuracy: {dt_accuracy}\n")
-    f.write(f"Logistic Regression Accuracy: {lr_accuracy}\n")
+    f.write(f"Decision Tree Accuracy: {dt_accuracy:.3f}\n")
+    f.write(f"Logistic Regression Accuracy: {lr_accuracy:.3f}\n")
 
 # -----------------------------
 # Classification Report
 # -----------------------------
-report = classification_report(y_test, y_pred_dt)
-print("\nClassification Report (Decision Tree):\n", report)
+print("\nClassification Report (Decision Tree):\n")
+print(classification_report(y_test, y_pred_dt))
 
 # -----------------------------
 # Confusion Matrix
@@ -100,21 +107,37 @@ plt.close()
 # -----------------------------
 # Correlation Heatmap
 # -----------------------------
-plt.figure(figsize=(12,8))
-sns.heatmap(df.corr(), annot=True, cmap="coolwarm", fmt=".2f")
+plt.figure(figsize=(10,7))
+sns.heatmap(df.corr(numeric_only=True), annot=True, cmap="coolwarm", fmt=".2f")
 plt.title("Correlation Heatmap")
 plt.tight_layout()
 plt.savefig("graphs/correlation_heatmap.png", bbox_inches='tight')
 plt.close()
 
 # -----------------------------
-# Feature Importance
+# Feature Importance (FIXED)
 # -----------------------------
 importance = dt_model.feature_importances_
+feature_names = X.columns
 
-plt.figure(figsize=(10,6))
-plt.barh(X.columns, importance)
-plt.xlabel("Importance Score")
+importance_df = pd.DataFrame({
+    "Feature": feature_names,
+    "Importance": importance
+})
+
+# Remove zero-importance features
+importance_df = importance_df[importance_df["Importance"] > 0]
+
+# Sort for better visualization
+importance_df = importance_df.sort_values(by="Importance", ascending=True)
+
+plt.figure(figsize=(8,5))
+sns.barplot(
+    data=importance_df,
+    x="Importance",
+    y="Feature"
+)
+
 plt.title("Feature Importance")
 plt.tight_layout()
 plt.savefig("graphs/feature_importance.png", bbox_inches='tight')
@@ -127,7 +150,8 @@ models = ['Decision Tree', 'Logistic Regression']
 accuracies = [dt_accuracy, lr_accuracy]
 
 plt.figure(figsize=(6,4))
-plt.bar(models, accuracies)
+sns.barplot(x=models, y=accuracies)
+
 plt.ylabel("Accuracy")
 plt.title("Model Comparison")
 plt.ylim(0,1)
@@ -143,7 +167,7 @@ plt.close()
 # Save Predictions
 # -----------------------------
 results = pd.DataFrame({
-    "Actual": y_test,
+    "Actual": y_test.values,
     "Predicted_DT": y_pred_dt,
     "Predicted_LR": y_pred_lr
 })
