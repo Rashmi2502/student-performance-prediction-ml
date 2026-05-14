@@ -179,3 +179,218 @@ results["LR_Label"] = results["Predicted_LR"].map({0: "Fail", 1: "Pass"})
 results.to_csv("outputs/results.csv", index=False)
 
 print("\nStudent Performance Prediction Completed")
+
+
+# =========================================================
+# SIMPLE GUI FOR STUDENT PREDICTION
+# =========================================================
+
+import tkinter as tk
+from tkinter import messagebox
+
+# -----------------------------
+# Prediction Function
+# -----------------------------
+
+def predict_student():
+
+    try:
+
+        # Get values from entries
+        study_hours = float(entry_study.get())
+        attendance = float(entry_attendance.get())
+        previous_marks = float(entry_previous.get())
+        assignment_score = float(entry_assignment.get())
+        internal_marks = float(entry_internal.get())
+
+        parental_education = parent_var.get()
+        internet_access = internet_var.get()
+        extra_classes = extra_var.get()
+
+        # -----------------------------------
+        # Encode categorical values
+        # -----------------------------------
+
+        parent_map = {
+            "Low": 0,
+            "Medium": 1,
+            "High": 2
+        }
+
+        parental_education = parent_map[parental_education]
+
+        internet_access = 1 if internet_access == "Yes" else 0
+
+        extra_classes = 1 if extra_classes == "Yes" else 0
+
+        # -----------------------------------
+        # Create dataframe
+        # -----------------------------------
+
+        user_data = pd.DataFrame([{
+            "Study_Hours": study_hours,
+            "Attendance_Pct": attendance,
+            "Previous_Marks": previous_marks,
+            "Assignment_Score": assignment_score,
+            "Internal_Marks": internal_marks,
+            "Parental_Education": parental_education,
+            "Internet_Access": internet_access,
+            "Extra_Classes": extra_classes
+        }])
+
+        # Scale for Logistic Regression
+        user_scaled = scaler.transform(user_data)
+
+        # Prediction
+        prediction = lr_model.predict(user_scaled)[0]
+
+        result = "PASS ✅" if prediction == 1 else "FAIL ❌"
+
+        messagebox.showinfo(
+            "Prediction Result",
+            f"Student Will {result}"
+        )
+
+    except Exception as e:
+
+        messagebox.showerror(
+            "Error",
+            str(e)
+        )
+
+# =========================================================
+# GUI WINDOW
+# =========================================================
+
+root = tk.Tk()
+
+root.title("Student Performance Prediction")
+
+root.geometry("450x500")
+
+root.configure(bg="#F4F6F7")
+
+# =========================================================
+# TITLE
+# =========================================================
+
+title = tk.Label(
+    root,
+    text="Student Performance Predictor",
+    font=("Arial", 18, "bold"),
+    bg="#F4F6F7",
+    fg="#1B4F72"
+)
+
+title.pack(pady=15)
+
+# =========================================================
+# INPUT FIELDS
+# =========================================================
+
+def create_label(text):
+    tk.Label(
+        root,
+        text=text,
+        font=("Arial", 11, "bold"),
+        bg="#F4F6F7"
+    ).pack()
+
+def create_entry():
+    entry = tk.Entry(
+        root,
+        width=30,
+        font=("Arial", 11)
+    )
+    entry.pack(pady=5)
+    return entry
+
+# Study Hours
+create_label("Study Hours")
+entry_study = create_entry()
+
+# Attendance
+create_label("Attendance Percentage")
+entry_attendance = create_entry()
+
+# Previous Marks
+create_label("Previous Marks")
+entry_previous = create_entry()
+
+# Assignment Score
+create_label("Assignment Score")
+entry_assignment = create_entry()
+
+# Internal Marks
+create_label("Internal Marks")
+entry_internal = create_entry()
+
+# =========================================================
+# DROPDOWNS
+# =========================================================
+
+# Parent Education
+create_label("Parental Education")
+
+parent_var = tk.StringVar(value="Medium")
+
+parent_menu = tk.OptionMenu(
+    root,
+    parent_var,
+    "Low",
+    "Medium",
+    "High"
+)
+
+parent_menu.pack(pady=5)
+
+# Internet Access
+create_label("Internet Access")
+
+internet_var = tk.StringVar(value="Yes")
+
+internet_menu = tk.OptionMenu(
+    root,
+    internet_var,
+    "Yes",
+    "No"
+)
+
+internet_menu.pack(pady=5)
+
+# Extra Classes
+create_label("Extra Classes")
+
+extra_var = tk.StringVar(value="Yes")
+
+extra_menu = tk.OptionMenu(
+    root,
+    extra_var,
+    "Yes",
+    "No"
+)
+
+extra_menu.pack(pady=5)
+
+# =========================================================
+# BUTTON
+# =========================================================
+
+predict_btn = tk.Button(
+    root,
+    text="Predict Result",
+    font=("Arial", 12, "bold"),
+    bg="#3498DB",
+    fg="white",
+    padx=15,
+    pady=8,
+    command=predict_student
+)
+
+predict_btn.pack(pady=20)
+
+# =========================================================
+# RUN GUI
+# =========================================================
+
+root.mainloop()
